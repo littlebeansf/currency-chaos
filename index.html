@@ -5,20 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Currency Chaos — Convert Everything, Even Rupees</title>
   <meta name="description" content="The world's most irresponsible currency converter. Real money, fake money, space money." />
-
-  <!-- Fonts -->
   <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&f[]=satoshi@400,500,700&display=swap" rel="stylesheet" />
-
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- Animated Background Canvas -->
   <canvas id="bg-canvas"></canvas>
 
   <!-- Loading Screen -->
   <div id="loader" class="loader">
     <div class="loader-inner">
-      <svg class="loader-coin" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <svg class="loader-coin" viewBox="0 0 80 80" fill="none" aria-hidden="true">
         <circle cx="40" cy="40" r="36" stroke="var(--color-gold)" stroke-width="4"/>
         <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" fill="var(--color-gold)" font-family="Cabinet Grotesk, sans-serif" font-weight="800" font-size="28">¢</text>
       </svg>
@@ -30,198 +26,164 @@
   <!-- Main App -->
   <div id="app" class="app hidden">
 
-    <!-- Header -->
-    <header class="header">
-      <div class="header-inner">
-        <div class="logo">
-          <svg class="logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2.5"/>
-            <circle cx="20" cy="20" r="10" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"/>
-            <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" fill="currentColor" font-family="Cabinet Grotesk, sans-serif" font-weight="900" font-size="14">¢¢</text>
-          </svg>
-          <span class="logo-text">Currency<strong>Chaos</strong></span>
-        </div>
-        <div class="header-right">
-          <span class="live-badge">
-            <span class="live-dot"></span>
-            Live Rates
-          </span>
-          <button class="refresh-btn" id="refresh-btn" aria-label="Refresh rates" title="Refresh live rates">
-            <svg class="refresh-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            <span class="refresh-label">Refresh</span>
-          </button>
-          <span class="refresh-ts-wrap"><span id="refresh-ts" class="refresh-ts"></span></span>
-          <button class="theme-toggle" data-theme-toggle aria-label="Switch to dark mode">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          </button>
-        </div>
+    <!-- ── Top Bar ── -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <svg class="logo-icon" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+          <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2.5"/>
+          <circle cx="20" cy="20" r="10" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"/>
+          <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" fill="currentColor" font-family="Cabinet Grotesk, sans-serif" font-weight="900" font-size="14">¢¢</text>
+        </svg>
+        <span class="logo-text">Currency<strong>Chaos</strong></span>
+        <span class="tagline">Convert <span class="gradient-text" id="rotating-word">Everything<span class="cursor">|</span></span></span>
+      </div>
+      <div class="topbar-right">
+        <span class="live-badge">
+          <span class="live-dot"></span>
+          Live
+        </span>
+        <button class="refresh-btn" id="refresh-btn" aria-label="Refresh rates" title="Refresh live rates">
+          <svg class="refresh-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          <span class="refresh-label">Refresh</span>
+        </button>
+        <span id="refresh-ts" class="refresh-ts"></span>
+        <button class="theme-toggle" data-theme-toggle aria-label="Toggle theme">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
       </div>
     </header>
 
-    <!-- Hero -->
-    <section class="hero">
-      <div class="hero-inner">
-        <p class="hero-eyebrow">The World's Most Irresponsible Currency Converter</p>
-        <h1 class="hero-title">Convert <span class="gradient-text" id="rotating-word">Everything<span class="cursor">|</span></span></h1>
-        <p class="hero-subtitle">Real currencies, fictional currencies, cursed currencies. From USD to Bottle Caps — we cover it all. Conversion rates may or may not be scientifically plausible.</p>
-      </div>
-    </section>
+    <!-- ── Main two-panel layout ── -->
+    <div class="workspace">
 
-    <!-- Converter Card -->
-    <main class="converter-section">
-      <div class="converter-card">
+      <!-- LEFT: Converter Panel -->
+      <aside class="converter-panel">
 
-        <!-- Amount Input -->
-        <div class="amount-row">
+        <!-- Amount -->
+        <div class="field-group">
           <label class="field-label" for="amount-input">Amount</label>
-          <div class="amount-input-wrap">
-            <input
-              type="number"
-              id="amount-input"
-              class="amount-input"
-              value="1"
-              min="0"
-              step="any"
-              aria-label="Amount to convert"
-            />
+          <input type="number" id="amount-input" class="amount-input" value="1" min="0" step="any" aria-label="Amount to convert" />
+        </div>
+
+        <!-- FROM selector -->
+        <div class="field-group">
+          <label class="field-label" for="from-search">From</label>
+          <div class="currency-selector" id="from-selector">
+            <div class="selected-display" id="from-display" tabindex="0" role="button" aria-haspopup="listbox">
+              <span class="sel-flag" id="from-flag">💵</span>
+              <div class="sel-info">
+                <span class="sel-code" id="from-code">USD</span>
+                <span class="sel-name" id="from-name">US Dollar</span>
+              </div>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="dropdown" id="from-dropdown" role="listbox">
+              <div class="dropdown-search-wrap">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" class="dropdown-search" id="from-search" placeholder="Search…" autocomplete="off" />
+              </div>
+              <div class="dropdown-groups" id="from-list"></div>
+            </div>
           </div>
         </div>
 
-        <!-- Currency selectors -->
-        <div class="selectors-row">
-          <div class="selector-col">
-            <label class="field-label" for="from-search">From</label>
-            <div class="currency-selector" id="from-selector">
-              <div class="selected-display" id="from-display" tabindex="0" role="button" aria-haspopup="listbox" aria-label="Select source currency">
-                <div class="currency-flag-emoji" id="from-flag">💵</div>
-                <div class="currency-info">
-                  <span class="currency-code" id="from-code">USD</span>
-                  <span class="currency-name" id="from-name">US Dollar</span>
-                </div>
-                <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-              </div>
-              <div class="dropdown" id="from-dropdown" role="listbox" aria-label="Source currency options">
-                <div class="dropdown-search-wrap">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                  <input type="text" class="dropdown-search" id="from-search" placeholder="Search currencies…" autocomplete="off" />
-                </div>
-                <div class="dropdown-groups" id="from-list"></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Swap button -->
+        <!-- Swap -->
+        <div class="swap-row">
           <button class="swap-btn" id="swap-btn" aria-label="Swap currencies">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
               <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
             </svg>
           </button>
+        </div>
 
-          <div class="selector-col">
-            <label class="field-label" for="to-search">To</label>
-            <div class="currency-selector" id="to-selector">
-              <div class="selected-display" id="to-display" tabindex="0" role="button" aria-haspopup="listbox" aria-label="Select target currency">
-                <div class="currency-flag-emoji" id="to-flag">⚗️</div>
-                <div class="currency-info">
-                  <span class="currency-code" id="to-code">GAL</span>
-                  <span class="currency-name" id="to-name">Galleon</span>
-                </div>
-                <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        <!-- TO selector -->
+        <div class="field-group">
+          <label class="field-label" for="to-search">To</label>
+          <div class="currency-selector" id="to-selector">
+            <div class="selected-display" id="to-display" tabindex="0" role="button" aria-haspopup="listbox">
+              <span class="sel-flag" id="to-flag">⚗️</span>
+              <div class="sel-info">
+                <span class="sel-code" id="to-code">GAL</span>
+                <span class="sel-name" id="to-name">Galleon</span>
               </div>
-              <div class="dropdown" id="to-dropdown" role="listbox" aria-label="Target currency options">
-                <div class="dropdown-search-wrap">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                  <input type="text" class="dropdown-search" id="to-search" placeholder="Search currencies…" autocomplete="off" />
-                </div>
-                <div class="dropdown-groups" id="to-list"></div>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="dropdown" id="to-dropdown" role="listbox">
+              <div class="dropdown-search-wrap">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" class="dropdown-search" id="to-search" placeholder="Search…" autocomplete="off" />
               </div>
+              <div class="dropdown-groups" id="to-list"></div>
             </div>
           </div>
         </div>
 
-        <!-- Result Display -->
-        <div class="result-wrap" id="result-wrap">
+        <!-- Result -->
+        <div class="result-wrap">
           <div class="result-equals">=</div>
           <div class="result-value-wrap">
-            <span class="result-value" id="result-value">0.15</span>
+            <span class="result-value" id="result-value">0</span>
             <span class="result-unit" id="result-unit">GAL</span>
           </div>
-          <div class="result-full-name" id="result-full-name">Galleons</div>
+          <div class="result-meta">
+            <span class="result-full-name" id="result-full-name">Galleons</span>
+            <span class="result-rate" id="rate-text">1 USD = 0 GAL</span>
+          </div>
         </div>
 
         <!-- Flavor text -->
-        <div class="flavor-wrap" id="flavor-wrap">
-          <div class="flavor-icon">💬</div>
-          <p class="flavor-text" id="flavor-text">Stored in a vault at Gringotts, guarded by a dragon. Much safer than your bank.</p>
+        <div class="flavor-wrap">
+          <span class="flavor-icon">💬</span>
+          <p class="flavor-text" id="flavor-text">Stored in a vault at Gringotts, guarded by a dragon.</p>
         </div>
 
-        <!-- Rate info -->
-        <div class="rate-info" id="rate-info">
-          <span id="rate-text">1 USD = 0.15 GAL</span>
-          <span class="rate-separator">·</span>
+        <!-- Rate source -->
+        <div class="rate-source-row">
           <span id="rate-source-text" class="rate-source"></span>
         </div>
 
-      </div>
-
-      <!-- Quick picks -->
-      <div class="quick-picks">
-        <p class="quick-label">Quick Picks</p>
-        <div class="quick-grid" id="quick-grid"></div>
-      </div>
-
-    </main>
-
-    <!-- Fun Stats Bar -->
-    <section class="stats-section">
-      <div class="stats-inner">
-        <div class="stat-item">
-          <span class="stat-number" id="stat-currencies">91</span>
-          <span class="stat-label">Total Currencies</span>
+        <!-- Stats strip -->
+        <div class="stats-strip">
+          <div class="stat-chip"><span id="stat-currencies" class="stat-n">—</span><span class="stat-l">currencies</span></div>
+          <div class="stat-chip"><span id="stat-fictional" class="stat-n">—</span><span class="stat-l">fictional</span></div>
+          <div class="stat-chip"><span id="stat-canonical" class="stat-n">—</span><span class="stat-l">canonical</span></div>
+          <div class="stat-chip"><span class="stat-n">0</span><span class="stat-l">advice given</span></div>
         </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item">
-          <span class="stat-number" id="stat-fictional">69</span>
-          <span class="stat-label">Fictional Currencies</span>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item">
-          <span class="stat-number" id="stat-canonical">0</span>
-          <span class="stat-label">Canonical Rates</span>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item">
-          <span class="stat-number">0</span>
-          <span class="stat-label">Financial Advice Given</span>
-        </div>
-      </div>
-    </section>
 
-    <!-- Currency Cards Grid -->
-    <section class="cards-section">
-      <div class="cards-header">
-        <h2 class="section-title">The Chaos Catalog</h2>
-        <p class="section-sub">Every currency, ranked by how much chaos it would cause in a real economy.</p>
-        <div class="filter-tabs" id="filter-tabs">
-          <button class="filter-tab active" data-filter="all">All</button>
-          <button class="filter-tab" data-filter="real">Real</button>
-          <button class="filter-tab" data-filter="games">Games</button>
-          <button class="filter-tab" data-filter="tv">TV &amp; Film</button>
-          <button class="filter-tab" data-filter="anime">Anime</button>
-          <button class="filter-tab" data-filter="books">Books</button>
-          <button class="filter-tab" data-filter="misc">Misc</button>
+      </aside>
+
+      <!-- RIGHT: Catalog Panel -->
+      <section class="catalog-panel">
+
+        <!-- Catalog header: search + filters -->
+        <div class="catalog-header">
+          <div class="catalog-search-wrap">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="catalog-search" class="catalog-search" placeholder="Search currencies, universes…" autocomplete="off" />
+          </div>
+          <div class="filter-tabs" id="filter-tabs">
+            <button class="filter-tab active" data-filter="all">All</button>
+            <button class="filter-tab" data-filter="real">Real</button>
+            <button class="filter-tab" data-filter="games">Games</button>
+            <button class="filter-tab" data-filter="tv">TV &amp; Film</button>
+            <button class="filter-tab" data-filter="anime">Anime</button>
+            <button class="filter-tab" data-filter="books">Books</button>
+            <button class="filter-tab" data-filter="misc">Misc</button>
+          </div>
         </div>
-      </div>
-      <div class="cards-grid" id="cards-grid"></div>
-    </section>
 
-    <footer class="footer">
-      <p>Made with questionable financial judgment. <strong>Not financial advice.</strong> Not even close.</p>
-      <p class="footer-sub">Exchange rates updated live for real currencies · Fictional rates hypothesized with great confidence and zero accountability</p>
-    </footer>
+        <!-- Catalog list -->
+        <div class="catalog-list" id="catalog-list" role="list"></div>
 
-  </div>
+        <div class="catalog-footer">
+          <span id="catalog-count" class="catalog-count"></span>
+        </div>
+
+      </section>
+
+    </div><!-- /workspace -->
+  </div><!-- /app -->
 
   <script src="currencies.js"></script>
   <script src="app.js"></script>

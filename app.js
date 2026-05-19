@@ -1,19 +1,20 @@
-// Currency Chaos — App Logic
+// Currency Chaos — App Logic v3
 
 // ── State ────────────────────────────────────────────────────────────────────
-let liveRates = {};
-let cryptoPrices = {}; // code → USD price (e.g. BTC → 67000)
+let liveRates    = {};
+let cryptoPrices = {};
 let fromCurrency = CURRENCIES.find(c => c.code === "USD");
 let toCurrency   = CURRENCIES.find(c => c.code === "GAL");
-let amount = 1;
+let amount       = 1;
 let currentFilter = "all";
-let ratesLoaded = false;
-let lastUpdated = null;
+let catalogQuery  = "";
+let ratesLoaded   = false;
+let lastUpdated   = null;
 
 // ── Animated Background ───────────────────────────────────────────────────────
 const canvas = document.getElementById("bg-canvas");
-const ctx = canvas.getContext("2d");
-let particles = [];
+const ctx    = canvas.getContext("2d");
+let particles  = [];
 
 function resizeCanvas() {
   canvas.width  = window.innerWidth;
@@ -22,19 +23,19 @@ function resizeCanvas() {
 
 function createParticles() {
   particles = [];
-  const count = Math.floor((canvas.width * canvas.height) / 18000);
+  const count = Math.floor((canvas.width * canvas.height) / 22000);
+  const symbols = ["$","€","£","¥","₿","⚜","G","₽","◈","¢","฿","§"];
   for (let i = 0; i < count; i++) {
     particles.push({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
-      vx: (Math.random() - 0.5) * 0.3,
-      vy: (Math.random() - 0.5) * 0.3,
-      r: Math.random() * 2.5 + 0.5,
-      alpha: Math.random() * 0.25 + 0.05,
-      symbol: ["$","€","£","¥","₿","⚜","G","₽","◈","¢","฿","§"][Math.floor(Math.random()*12)],
-      size: Math.random() * 10 + 8,
+      vx: (Math.random() - 0.5) * 0.25,
+      vy: (Math.random() - 0.5) * 0.25,
+      alpha: Math.random() * 0.18 + 0.04,
+      symbol: symbols[Math.floor(Math.random() * symbols.length)],
+      size: Math.random() * 9 + 7,
       rot: Math.random() * Math.PI * 2,
-      rotSpeed: (Math.random() - 0.5) * 0.005
+      rotSpeed: (Math.random() - 0.5) * 0.004
     });
   }
 }
@@ -43,49 +44,38 @@ function drawBg() {
   const isDark = document.documentElement.getAttribute("data-theme") === "dark";
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Gradient orbs
-  const gradients = [
-    { x: canvas.width * 0.15, y: canvas.height * 0.2,  r: canvas.width * 0.35, c1: isDark ? "rgba(1,105,111,0.07)" : "rgba(1,105,111,0.04)", c2: "transparent" },
-    { x: canvas.width * 0.85, y: canvas.height * 0.7,  r: canvas.width * 0.4,  c1: isDark ? "rgba(79,152,163,0.06)" : "rgba(1,105,111,0.035)", c2: "transparent" },
-    { x: canvas.width * 0.5,  y: canvas.height * 0.5,  r: canvas.width * 0.5,  c1: isDark ? "rgba(209,153,0,0.025)" : "rgba(209,153,0,0.015)", c2: "transparent" },
+  const orbs = [
+    { x: canvas.width * 0.15, y: canvas.height * 0.2,  r: canvas.width * 0.35, c: isDark ? "rgba(1,105,111,0.07)"  : "rgba(1,105,111,0.04)"  },
+    { x: canvas.width * 0.85, y: canvas.height * 0.75, r: canvas.width * 0.4,  c: isDark ? "rgba(79,152,163,0.06)" : "rgba(1,105,111,0.03)"  },
+    { x: canvas.width * 0.5,  y: canvas.height * 0.5,  r: canvas.width * 0.5,  c: isDark ? "rgba(209,153,0,0.025)": "rgba(209,153,0,0.012)" },
   ];
-  gradients.forEach(g => {
-    const grad = ctx.createRadialGradient(g.x, g.y, 0, g.x, g.y, g.r);
-    grad.addColorStop(0, g.c1);
-    grad.addColorStop(1, g.c2);
-    ctx.fillStyle = grad;
+  orbs.forEach(o => {
+    const g = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r);
+    g.addColorStop(0, o.c); g.addColorStop(1, "transparent");
+    ctx.fillStyle = g;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   });
 
-  // Floating currency symbols
   particles.forEach(p => {
-    p.x += p.vx;
-    p.y += p.vy;
-    p.rot += p.rotSpeed;
+    p.x += p.vx; p.y += p.vy; p.rot += p.rotSpeed;
     if (p.x < -20) p.x = canvas.width + 20;
     if (p.x > canvas.width + 20) p.x = -20;
     if (p.y < -20) p.y = canvas.height + 20;
     if (p.y > canvas.height + 20) p.y = -20;
-
     ctx.save();
-    ctx.translate(p.x, p.y);
-    ctx.rotate(p.rot);
+    ctx.translate(p.x, p.y); ctx.rotate(p.rot);
     ctx.globalAlpha = p.alpha;
     ctx.fillStyle = isDark ? "#cdccca" : "#28251d";
     ctx.font = `${p.size}px 'Cabinet Grotesk', sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText(p.symbol, 0, 0);
     ctx.restore();
   });
-
   requestAnimationFrame(drawBg);
 }
 
 window.addEventListener("resize", () => { resizeCanvas(); createParticles(); });
-resizeCanvas();
-createParticles();
-drawBg();
+resizeCanvas(); createParticles(); drawBg();
 
 // ── Loading Screen ────────────────────────────────────────────────────────────
 const LOADING_MSGS = [
@@ -107,20 +97,15 @@ async function fetchCryptoPrices() {
     const res = await fetch(COINGECKO_URL);
     if (!res.ok) throw new Error("CoinGecko HTTP " + res.status);
     const data = await res.json();
-    // Build a geckoId → price map
     const geckoMap = {};
     data.forEach(coin => { geckoMap[coin.id] = coin.current_price; });
-
-    // Inject into our crypto currencies
     CURRENCIES.forEach(c => {
-      if (c.isCrypto && c.geckoId && geckoMap[c.geckoId] != null) {
+      if (c.isCrypto && c.geckoId && geckoMap[c.geckoId] != null)
         cryptoPrices[c.code] = geckoMap[c.geckoId];
-      }
     });
     return true;
   } catch (e) {
     console.warn("CoinGecko fetch failed:", e);
-    // Fallback static prices
     const fallback = {
       BTC:96000, ETH:3500, USDT:1, XRP:2.4, BNB:650, SOL:185, USDC:1,
       DOGE:0.18, ADA:0.52, TRX:0.23, AVAX:35, SHIB:0.000022, TON:5.5,
@@ -136,7 +121,7 @@ async function fetchCryptoPrices() {
   }
 }
 
-// ── Live rates fetch ──────────────────────────────────────────────────────────
+// ── Fiat + crypto fetch ───────────────────────────────────────────────────────
 async function fetchLiveRates() {
   const msgEl = document.querySelector(".loader-text");
   let msgIdx = 0;
@@ -146,23 +131,19 @@ async function fetchLiveRates() {
   }, 700);
 
   try {
-    // Fetch fiat and crypto in parallel
     const [fiatRes] = await Promise.all([
       fetch("https://api.exchangerate-api.com/v4/latest/USD"),
       fetchCryptoPrices()
     ]);
     const data = await fiatRes.json();
     liveRates = data.rates;
-    // Inject live fiat rates
     CURRENCIES.forEach(c => {
-      if (c.realCurrency && !c.isCrypto && c.code !== "USD" && liveRates[c.code]) {
+      if (c.realCurrency && !c.isCrypto && c.code !== "USD" && liveRates[c.code])
         c.usdRate = 1 / liveRates[c.code];
-      }
     });
     ratesLoaded = true;
     lastUpdated = new Date();
   } catch (e) {
-    // Fallback fiat rates if API fails
     const fallback = { EUR:0.92, GBP:0.79, JPY:149.5, CHF:0.89, CNY:7.23, CAD:1.36, AUD:1.53, INR:83.1, KRW:1320, BRL:4.97, MXN:17.2, SEK:10.42, NOK:10.68, SGD:1.34, NZD:1.63, ZAR:18.5, RUB:90.2, TRY:32.4 };
     CURRENCIES.forEach(c => {
       if (c.realCurrency && !c.isCrypto && fallback[c.code]) c.usdRate = 1 / fallback[c.code];
@@ -177,78 +158,57 @@ async function fetchLiveRates() {
   setTimeout(() => {
     document.getElementById("loader").style.opacity = "0";
     document.getElementById("loader").style.pointerEvents = "none";
-    document.getElementById("app").classList.remove("hidden");
-    document.getElementById("app").style.animation = "fadeIn 0.6s cubic-bezier(0.16,1,0.3,1) both";
+    const app = document.getElementById("app");
+    app.classList.remove("hidden");
+    app.style.animation = "fadeIn 0.5s cubic-bezier(0.16,1,0.3,1) both";
     initApp();
-  }, 500);
+  }, 450);
 }
 
 // ── Manual refresh ────────────────────────────────────────────────────────────
 async function refreshRates() {
-  const btn = document.getElementById("refresh-btn");
+  const btn  = document.getElementById("refresh-btn");
   const tsEl = document.getElementById("refresh-ts");
   if (!btn) return;
-
-  btn.classList.add("refreshing");
-  btn.disabled = true;
-
+  btn.classList.add("refreshing"); btn.disabled = true;
   try {
-    const [fiatRes, cryptoOk] = await Promise.all([
+    const [fiatRes] = await Promise.all([
       fetch("https://api.exchangerate-api.com/v4/latest/USD"),
       fetchCryptoPrices()
     ]);
     const data = await fiatRes.json();
     liveRates = data.rates;
     CURRENCIES.forEach(c => {
-      if (c.realCurrency && !c.isCrypto && c.code !== "USD" && liveRates[c.code]) {
+      if (c.realCurrency && !c.isCrypto && c.code !== "USD" && liveRates[c.code])
         c.usdRate = 1 / liveRates[c.code];
-      }
     });
     ratesLoaded = true;
     lastUpdated = new Date();
-  } catch (e) {
-    console.warn("Refresh failed:", e);
-  }
-
-  btn.classList.remove("refreshing");
-  btn.disabled = false;
+  } catch (e) { console.warn("Refresh failed:", e); }
+  btn.classList.remove("refreshing"); btn.disabled = false;
   updateTimestamp(tsEl);
   updateConversion();
-  buildCards(currentFilter);
-  buildQuickPicks();
+  buildCatalog();
 }
 
 function updateTimestamp(el) {
   if (!el || !lastUpdated) return;
-  const now = new Date();
-  const diffSec = Math.floor((now - lastUpdated) / 1000);
-  if (diffSec < 60) {
-    el.textContent = "just now";
-  } else {
-    const m = Math.floor(diffSec / 60);
-    el.textContent = `${m}m ago`;
-  }
+  const diff = Math.floor((Date.now() - lastUpdated) / 1000);
+  el.textContent = diff < 60 ? "just now" : `${Math.floor(diff / 60)}m ago`;
 }
 
 // ── Conversion Logic ──────────────────────────────────────────────────────────
 function getUSDRate(currency) {
   if (currency.code === "USD") return 1;
-  // Crypto: cryptoPrices stores USD price directly (e.g. BTC=96000 USD per 1 BTC)
-  if (currency.isCrypto && cryptoPrices[currency.code] != null) {
-    return cryptoPrices[currency.code]; // USD per 1 coin
-  }
-  if (currency.realCurrency && liveRates[currency.code]) {
+  if (currency.isCrypto && cryptoPrices[currency.code] != null)
+    return cryptoPrices[currency.code];
+  if (currency.realCurrency && liveRates[currency.code])
     return 1 / liveRates[currency.code];
-  }
   return currency.usdRate || 1;
 }
 
 function convert(amount, from, to) {
-  const fromUSD = getUSDRate(from);
-  const toUSD   = getUSDRate(to);
-  // amount in from → USD → to
-  const inUSD   = amount * fromUSD;
-  return inUSD / toUSD;
+  return (amount * getUSDRate(from)) / getUSDRate(to);
 }
 
 function formatNumber(n) {
@@ -262,16 +222,15 @@ function formatNumber(n) {
   return n.toExponential(3);
 }
 
-// ── Animated counter ──────────────────────────────────────────────────────────
+// Animated number counter
 let countAnim = null;
-function animateValue(el, from, to, duration = 400) {
+function animateValue(el, from, to, duration = 350) {
   if (countAnim) cancelAnimationFrame(countAnim);
   const start = performance.now();
   function step(now) {
     const t = Math.min((now - start) / duration, 1);
     const ease = 1 - Math.pow(1 - t, 3);
-    const val = from + (to - from) * ease;
-    el.textContent = formatNumber(val);
+    el.textContent = formatNumber(from + (to - from) * ease);
     if (t < 1) countAnim = requestAnimationFrame(step);
     else el.textContent = formatNumber(to);
   }
@@ -285,49 +244,55 @@ function updateConversion() {
   animateValue(document.getElementById("result-value"), lastResult, result);
   lastResult = result;
 
-  document.getElementById("result-unit").textContent = toCurrency.code;
+  document.getElementById("result-unit").textContent      = toCurrency.code;
   document.getElementById("result-full-name").textContent = toCurrency.name;
-  document.getElementById("flavor-text").textContent = toCurrency.flavorText;
+  document.getElementById("flavor-text").textContent      = toCurrency.flavorText;
 
-  const oneFromInTo = convert(1, fromCurrency, toCurrency);
+  const rate = convert(1, fromCurrency, toCurrency);
   document.getElementById("rate-text").textContent =
-    `1 ${fromCurrency.code} = ${formatNumber(oneFromInTo)} ${toCurrency.code}`;
+    `1 ${fromCurrency.code} = ${formatNumber(rate)} ${toCurrency.code}`;
 
-  const sourceEl = document.getElementById("rate-source-text");
+  const src = document.getElementById("rate-source-text");
   if (toCurrency.isCrypto && cryptoPrices[toCurrency.code] != null) {
-    sourceEl.textContent = "Live · CoinGecko";
-    sourceEl.style.color = "var(--color-success)";
+    src.textContent = "Live · CoinGecko"; src.style.color = "var(--color-success)";
   } else if (toCurrency.realCurrency && ratesLoaded) {
-    sourceEl.textContent = "Live rate";
-    sourceEl.style.color = "var(--color-success)";
+    src.textContent = "Live rate"; src.style.color = "var(--color-success)";
   } else if (!toCurrency.realCurrency) {
-    sourceEl.textContent = `from ${toCurrency.universe}`;
-    sourceEl.style.color = "var(--color-primary)";
+    src.textContent = toCurrency.canonical ? "Canonical rate" : `Hypothesized · ${toCurrency.universe}`;
+    src.style.color = "var(--color-primary)";
   } else {
-    sourceEl.textContent = "Fallback rate";
-    sourceEl.style.color = "var(--color-warning)";
+    src.textContent = "Fallback rate"; src.style.color = "var(--color-warning)";
   }
+
+  // Highlight active row in catalog
+  document.querySelectorAll(".catalog-row").forEach(r => {
+    r.classList.toggle("active-to", r.dataset.code === toCurrency.code);
+  });
 }
 
-// ── Currency Selectors ────────────────────────────────────────────────────────
+// ── Dropdowns ────────────────────────────────────────────────────────────────
 function buildDropdown(listEl, searchId, onSelect) {
-  const groups = { real: [], games: [], tv: [], anime: [], books: [], misc: [] };
-  const labels = { real: "💰 Real Currencies", games: "🎮 Video Games", tv: "📺 TV & Film", anime: "⛩ Anime", books: "📚 Books & Literature", misc: "🎲 Misc / Chaos" };
-
-  CURRENCIES.forEach(c => {
-    if (groups[c.category]) groups[c.category].push(c);
-  });
+  const groups = { real:[], games:[], tv:[], anime:[], books:[], misc:[] };
+  const labels = {
+    real:"💰 Real Currencies", games:"🎮 Video Games",
+    tv:"📺 TV & Film", anime:"⛩ Anime",
+    books:"📚 Books & Literature", misc:"🎲 Misc / Chaos"
+  };
+  CURRENCIES.forEach(c => { if (groups[c.category]) groups[c.category].push(c); });
 
   function render(filter = "") {
     listEl.innerHTML = "";
-    Object.entries(groups).forEach(([cat, currencies]) => {
-      const filtered = currencies.filter(c =>
-        !filter || c.code.toLowerCase().includes(filter) || c.name.toLowerCase().includes(filter) || (c.universe && c.universe.toLowerCase().includes(filter))
+    Object.entries(groups).forEach(([cat, curs]) => {
+      const filtered = curs.filter(c =>
+        !filter ||
+        c.code.toLowerCase().includes(filter) ||
+        c.name.toLowerCase().includes(filter) ||
+        (c.universe && c.universe.toLowerCase().includes(filter))
       );
-      if (filtered.length === 0) return;
-      const groupEl = document.createElement("div");
-      groupEl.className = "dropdown-group";
-      groupEl.innerHTML = `<div class="dropdown-group-label">${labels[cat]}</div>`;
+      if (!filtered.length) return;
+      const grp = document.createElement("div");
+      grp.className = "dropdown-group";
+      grp.innerHTML = `<div class="dropdown-group-label">${labels[cat]}</div>`;
       filtered.forEach(currency => {
         const item = document.createElement("div");
         item.className = "dropdown-item";
@@ -345,14 +310,14 @@ function buildDropdown(listEl, searchId, onSelect) {
           document.getElementById(searchId).value = "";
           render("");
         });
-        groupEl.appendChild(item);
+        grp.appendChild(item);
       });
-      listEl.appendChild(groupEl);
+      listEl.appendChild(grp);
     });
   }
 
   render();
-  document.getElementById(searchId).addEventListener("input", e => render(e.target.value.toLowerCase()));
+  document.getElementById(searchId).addEventListener("input", e => render(e.target.value.toLowerCase().trim()));
 }
 
 function closeAllDropdowns() {
@@ -361,187 +326,170 @@ function closeAllDropdowns() {
 }
 
 function updateSelector(side) {
-  const currency = side === "from" ? fromCurrency : toCurrency;
-  document.getElementById(`${side}-flag`).textContent  = currency.flag;
-  document.getElementById(`${side}-code`).textContent  = currency.code;
-  document.getElementById(`${side}-name`).textContent  = currency.name;
+  const c = side === "from" ? fromCurrency : toCurrency;
+  document.getElementById(`${side}-flag`).textContent = c.flag;
+  document.getElementById(`${side}-code`).textContent = c.code;
+  document.getElementById(`${side}-name`).textContent = c.name;
 }
 
-// ── Quick Picks ───────────────────────────────────────────────────────────────
-function buildQuickPicks() {
-  const grid = document.getElementById("quick-grid");
-  grid.innerHTML = "";
-  QUICK_PICKS.forEach(qp => {
-    const btn = document.createElement("button");
-    btn.className = "quick-pick";
-    const fc = CURRENCIES.find(c => c.code === qp.from);
-    const tc = CURRENCIES.find(c => c.code === qp.to);
-    btn.innerHTML = `
-      <span class="qp-flags">${fc.flag} → ${tc.flag}</span>
-      <span class="qp-label">${qp.label}</span>
-      <span class="qp-rate">${formatNumber(convert(1, fc, tc))} ${qp.to}</span>
-    `;
-    btn.addEventListener("click", () => {
-      fromCurrency = fc;
-      toCurrency   = tc;
-      updateSelector("from");
-      updateSelector("to");
-      updateConversion();
-    });
-    grid.appendChild(btn);
-  });
+// ── Catalog Panel ─────────────────────────────────────────────────────────────
+function getCatalogRows() {
+  let list = currentFilter === "all"
+    ? CURRENCIES
+    : CURRENCIES.filter(c => c.category === currentFilter);
+
+  const q = catalogQuery.toLowerCase().trim();
+  if (q) {
+    list = list.filter(c =>
+      c.code.toLowerCase().includes(q) ||
+      c.name.toLowerCase().includes(q) ||
+      (c.universe && c.universe.toLowerCase().includes(q)) ||
+      c.flavorText.toLowerCase().includes(q)
+    );
+  }
+  return list;
 }
 
-// ── Cards Grid ────────────────────────────────────────────────────────────────
-function buildCards(filter = "all") {
-  const grid = document.getElementById("cards-grid");
-  grid.innerHTML = "";
-  const list = filter === "all" ? CURRENCIES : CURRENCIES.filter(c => c.category === filter);
+function getDisplayRate(c) {
+  if (c.isCrypto && cryptoPrices[c.code] != null) {
+    return `$${formatNumber(cryptoPrices[c.code])}`;
+  }
+  if (c.realCurrency && liveRates[c.code]) {
+    return `$${formatNumber(1 / liveRates[c.code])}`;
+  }
+  if (c.code === "USD") return "$1.00";
+  if (!c.realCurrency && c.usdRate) {
+    return `≈$${formatNumber(c.usdRate)}`;
+  }
+  return "";
+}
 
-  list.forEach((currency, i) => {
-    const card = document.createElement("div");
-    card.className = "currency-card fade-in";
-    card.style.animationDelay = `${Math.min(i * 25, 400)}ms`;
+function buildCatalog() {
+  const listEl    = document.getElementById("catalog-list");
+  const countEl   = document.getElementById("catalog-count");
+  const rows      = getCatalogRows();
+  const fragment  = document.createDocumentFragment();
 
-    const isReal = currency.realCurrency;
-    let displayRate;
-    if (currency.isCrypto && cryptoPrices[currency.code] != null) {
-      displayRate = `1 ${currency.code} = ${formatNumber(cryptoPrices[currency.code])} USD`;
-    } else if (isReal) {
-      displayRate = `1 ${currency.code} = ${formatNumber(getUSDRate(currency))} USD`;
-    } else {
-      displayRate = `1 USD ≈ ${formatNumber(1 / (currency.usdRate || 1))} ${currency.code}`;
-    }
+  rows.forEach(c => {
+    const row = document.createElement("div");
+    row.className = "catalog-row" + (c.code === toCurrency.code ? " active-to" : "");
+    row.setAttribute("role", "listitem");
+    row.dataset.code = c.code;
 
-    card.innerHTML = `
-      <div class="card-header">
-        <span class="card-flag">${currency.flag}</span>
-        <div class="card-codes">
-          <span class="card-code">${currency.code}</span>
-          <span class="card-badge ${isReal ? "badge-real" : "badge-fake"}">${isReal ? (currency.isCrypto ? "Crypto" : "Real") : "Fictional"}</span>
-        </div>
-        <span class="card-symbol">${currency.symbol}</span>
+    let badgeClass, badgeText;
+    if (c.isCrypto)        { badgeClass = "badge-crypto"; badgeText = "Crypto"; }
+    else if (c.realCurrency){ badgeClass = "badge-real";   badgeText = "Real"; }
+    else                    { badgeClass = "badge-fake";   badgeText = "Fictional"; }
+
+    row.innerHTML = `
+      <span class="crow-flag">${c.flag}</span>
+      <span class="crow-code">${c.code}</span>
+      <div class="crow-name-wrap">
+        <div class="crow-name">${c.name}</div>
+        ${c.universe ? `<div class="crow-universe">${c.universe}</div>` : ""}
       </div>
-      <h3 class="card-name">${currency.name}</h3>
-      ${currency.universe ? `<p class="card-universe">from ${currency.universe}</p>` : ""}
-      <p class="card-rate">${displayRate}</p>
-      <p class="card-flavor">${currency.flavorText}</p>
-      <button class="card-convert-btn" data-code="${currency.code}">Convert →</button>
+      <span class="crow-badge ${badgeClass}">${badgeText}</span>
+      <span class="crow-rate">${getDisplayRate(c)}</span>
+      <button class="crow-set-btn" data-code="${c.code}" title="Set as target">Use →</button>
     `;
-    grid.appendChild(card);
-  });
 
-  // Card convert buttons
-  grid.querySelectorAll(".card-convert-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const c = CURRENCIES.find(x => x.code === btn.dataset.code);
-      if (!c) return;
+    // Click row → set as toCurrency
+    row.addEventListener("click", (e) => {
+      if (e.target.classList.contains("crow-set-btn") || e.target.closest(".crow-set-btn")) return;
       toCurrency = c;
       updateSelector("to");
       updateConversion();
-      document.querySelector(".converter-section").scrollIntoView({ behavior: "smooth", block: "center" });
     });
+
+    // Set button (also handles it but avoids double-fire)
+    row.querySelector(".crow-set-btn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      toCurrency = c;
+      updateSelector("to");
+      updateConversion();
+    });
+
+    fragment.appendChild(row);
   });
+
+  listEl.innerHTML = "";
+  listEl.appendChild(fragment);
+
+  countEl.textContent = `${rows.length} of ${CURRENCIES.length} currencies`;
 }
 
-// ── Filter Tabs ───────────────────────────────────────────────────────────────
+// ── Filter tabs ───────────────────────────────────────────────────────────────
 function initFilterTabs() {
   document.querySelectorAll(".filter-tab").forEach(tab => {
     tab.addEventListener("click", () => {
       document.querySelectorAll(".filter-tab").forEach(t => t.classList.remove("active"));
       tab.classList.add("active");
       currentFilter = tab.dataset.filter;
-      buildCards(currentFilter);
+      buildCatalog();
     });
   });
 }
 
-// ── Typewriter animation in hero ──────────────────────────────────────────────
+// ── Catalog search ────────────────────────────────────────────────────────────
+function initCatalogSearch() {
+  document.getElementById("catalog-search").addEventListener("input", e => {
+    catalogQuery = e.target.value;
+    buildCatalog();
+  });
+}
+
+// ── Typewriter ────────────────────────────────────────────────────────────────
 const ROTATING_WORDS = [
-  "Everything",
-  "Galleons",
-  "Bottle Caps",
-  "Septims",
-  "Latinum",
-  "Rupees",
-  "Gil",
-  "Simoleons",
-  "Zeni",
-  "Chaos",
-  "V-Bucks",
-  "Eddies",
-  "Bitcoin",
-  "Vibes",
+  "Everything","Galleons","Bottle Caps","Septims","Latinum","Rupees",
+  "Gil","Simoleons","Zeni","Chaos","V-Bucks","Eddies","Bitcoin","Vibes",
 ];
 let wordIdx = 0;
-let typeTimeout = null;
 
 function typewriterRun() {
   const wrapper = document.getElementById("rotating-word");
-  const cursor  = wrapper.querySelector(".cursor");
 
-  function getText() {
-    return wrapper.childNodes[0] ? wrapper.childNodes[0].textContent : "";
-  }
-  function setText(t) {
-    wrapper.childNodes[0].textContent = t;
-  }
+  function getText()    { return wrapper.childNodes[0] ? wrapper.childNodes[0].textContent : ""; }
+  function setText(t)   { if (wrapper.childNodes[0]) wrapper.childNodes[0].textContent = t; }
 
   function erase(cb) {
-    const current = getText();
-    if (current.length === 0) { cb(); return; }
-    setText(current.slice(0, -1));
-    typeTimeout = setTimeout(() => erase(cb), 55);
+    const cur = getText();
+    if (!cur.length) { cb(); return; }
+    setText(cur.slice(0, -1));
+    setTimeout(() => erase(cb), 52);
   }
-
   function type(target, cb) {
-    const current = getText();
-    if (current === target) { cb(); return; }
-    setText(target.slice(0, current.length + 1));
-    typeTimeout = setTimeout(() => type(target, cb), 90);
+    const cur = getText();
+    if (cur === target) { cb(); return; }
+    setText(target.slice(0, cur.length + 1));
+    setTimeout(() => type(target, cb), 88);
   }
-
   function loop() {
     wordIdx = (wordIdx + 1) % ROTATING_WORDS.length;
-    const next = ROTATING_WORDS[wordIdx];
-    typeTimeout = setTimeout(() => {
-      erase(() => {
-        typeTimeout = setTimeout(() => {
-          type(next, () => {
-            typeTimeout = setTimeout(loop, 2200);
-          });
-        }, 180);
-      });
+    setTimeout(() => {
+      erase(() => setTimeout(() => type(ROTATING_WORDS[wordIdx], () => setTimeout(loop, 2200)), 160));
     }, 2200);
   }
-
-  typeTimeout = setTimeout(loop, 2200);
+  setTimeout(loop, 2200);
 }
 
-// ── Stat counter animation ────────────────────────────────────────────────────
+// ── Stats ─────────────────────────────────────────────────────────────────────
 function animateStats() {
-  const realCount = CURRENCIES.filter(c => c.realCurrency && !c.isCrypto).length;
-  const cryptoCount = CURRENCIES.filter(c => c.isCrypto).length;
-  const fictCount  = CURRENCIES.filter(c => !c.realCurrency).length;
-  const canonCount = CURRENCIES.filter(c => !c.realCurrency && c.canonical).length;
   document.getElementById("stat-currencies").textContent = CURRENCIES.length;
-  document.getElementById("stat-fictional").textContent  = fictCount;
-  document.getElementById("stat-canonical").textContent  = canonCount;
+  document.getElementById("stat-fictional").textContent  = CURRENCIES.filter(c => !c.realCurrency).length;
+  document.getElementById("stat-canonical").textContent  = CURRENCIES.filter(c => !c.realCurrency && c.canonical).length;
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 function initApp() {
-  // Selectors
-  buildDropdown(
-    document.getElementById("from-list"), "from-search",
-    c => { fromCurrency = c; updateSelector("from"); updateConversion(); }
+  // Build from/to dropdowns
+  buildDropdown(document.getElementById("from-list"), "from-search",
+    c => { fromCurrency = c; updateSelector("from"); updateConversion(); buildCatalog(); }
   );
-  buildDropdown(
-    document.getElementById("to-list"), "to-search",
-    c => { toCurrency = c; updateSelector("to"); updateConversion(); }
+  buildDropdown(document.getElementById("to-list"), "to-search",
+    c => { toCurrency = c; updateSelector("to"); updateConversion(); buildCatalog(); }
   );
 
-  // Toggle dropdowns
+  // Dropdown toggle
   document.getElementById("from-display").addEventListener("click", e => {
     e.stopPropagation();
     const dd = document.getElementById("from-dropdown");
@@ -564,11 +512,10 @@ function initApp() {
       setTimeout(() => document.getElementById("to-search").focus(), 50);
     }
   });
-
   document.addEventListener("click", closeAllDropdowns);
   document.querySelectorAll(".dropdown").forEach(d => d.addEventListener("click", e => e.stopPropagation()));
 
-  // Amount input
+  // Amount
   document.getElementById("amount-input").addEventListener("input", e => {
     amount = parseFloat(e.target.value) || 0;
     updateConversion();
@@ -577,21 +524,17 @@ function initApp() {
   // Swap
   document.getElementById("swap-btn").addEventListener("click", () => {
     [fromCurrency, toCurrency] = [toCurrency, fromCurrency];
-    updateSelector("from");
-    updateSelector("to");
-    const swapBtn = document.getElementById("swap-btn");
-    swapBtn.style.transform = "rotate(180deg)";
-    setTimeout(() => swapBtn.style.transform = "", 300);
-    updateConversion();
+    updateSelector("from"); updateSelector("to");
+    const btn = document.getElementById("swap-btn");
+    btn.style.transform = "rotate(180deg)";
+    setTimeout(() => btn.style.transform = "", 280);
+    updateConversion(); buildCatalog();
   });
 
-  // Refresh button
-  const refreshBtn = document.getElementById("refresh-btn");
-  if (refreshBtn) {
-    refreshBtn.addEventListener("click", refreshRates);
-  }
+  // Refresh
+  document.getElementById("refresh-btn")?.addEventListener("click", refreshRates);
 
-  // Theme toggle
+  // Theme
   const themeBtn = document.querySelector("[data-theme-toggle]");
   const html = document.documentElement;
   let theme = matchMedia("(prefers-color-scheme:dark)").matches ? "dark" : "light";
@@ -603,28 +546,31 @@ function initApp() {
     updateThemeIcon(themeBtn, theme);
   });
 
-  updateSelector("from");
-  updateSelector("to");
+  updateSelector("from"); updateSelector("to");
   updateConversion();
-  buildQuickPicks();
-  buildCards();
+  buildCatalog();
   initFilterTabs();
+  initCatalogSearch();
   animateStats();
   typewriterRun();
 
-  // Show initial timestamp
-  const tsEl = document.getElementById("refresh-ts");
-  updateTimestamp(tsEl);
-  // Update timestamp display every minute
+  // Timestamp
+  updateTimestamp(document.getElementById("refresh-ts"));
   setInterval(() => updateTimestamp(document.getElementById("refresh-ts")), 60000);
+
+  // Scroll active catalog row into view
+  setTimeout(() => {
+    const active = document.querySelector(".catalog-row.active-to");
+    active?.scrollIntoView({ block: "center" });
+  }, 100);
 }
 
 function updateThemeIcon(btn, theme) {
   btn.innerHTML = theme === "dark"
-    ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`
-    : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+    ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`
+    : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
   btn.setAttribute("aria-label", `Switch to ${theme === "dark" ? "light" : "dark"} mode`);
 }
 
-// ── Kick it off ───────────────────────────────────────────────────────────────
+// ── Boot ──────────────────────────────────────────────────────────────────────
 fetchLiveRates();
