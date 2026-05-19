@@ -370,7 +370,12 @@ setInterval(rotateWord, 2500);
 
 // ── Stat counter animation ────────────────────────────────────────────────────
 function animateStats() {
+  const realCount = CURRENCIES.filter(c => c.realCurrency).length;
+  const fictCount  = CURRENCIES.filter(c => !c.realCurrency).length;
+  const canonCount = CURRENCIES.filter(c => !c.realCurrency && c.canonical).length;
   document.getElementById("stat-currencies").textContent = CURRENCIES.length;
+  document.getElementById("stat-fictional").textContent  = fictCount;
+  document.getElementById("stat-canonical").textContent  = canonCount;
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
