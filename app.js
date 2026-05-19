@@ -213,13 +213,26 @@ function convert(amount, from, to) {
 
 function formatNumber(n) {
   if (n === 0) return "0";
-  if (Math.abs(n) >= 1e12) return (n / 1e12).toFixed(2) + "T";
-  if (Math.abs(n) >= 1e9)  return (n / 1e9).toFixed(2) + "B";
-  if (Math.abs(n) >= 1e6)  return (n / 1e6).toFixed(2) + "M";
-  if (Math.abs(n) >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
-  if (Math.abs(n) >= 1)    return n.toFixed(4).replace(/\.?0+$/, "");
-  if (Math.abs(n) >= 0.01) return n.toFixed(6).replace(/\.?0+$/, "");
-  return n.toExponential(3);
+  const abs = Math.abs(n);
+  if (abs >= 1e15)  return (n / 1e15).toFixed(2) + " Quad";
+  if (abs >= 1e12)  return (n / 1e12).toFixed(2) + " T";
+  if (abs >= 1e9)   return (n / 1e9).toFixed(2) + " B";
+  if (abs >= 1e6)   return (n / 1e6).toFixed(2) + " M";
+  if (abs >= 1000)  return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  if (abs >= 1)     return n.toFixed(4).replace(/\.?0+$/, "");
+  if (abs >= 0.001) return n.toFixed(6).replace(/\.?0+$/, "");
+  if (abs >= 1e-9)  return n.toExponential(3);
+  return "~0";
+}
+
+// Returns a CSS class for the result based on magnitude
+function resultSizeClass(n) {
+  const s = formatNumber(n);
+  const len = s.length;
+  if (len > 14) return "result-xxs";
+  if (len > 11) return "result-xs";
+  if (len > 8)  return "result-sm";
+  return "";
 }
 
 // Animated number counter
@@ -243,6 +256,8 @@ function updateConversion() {
   const result = convert(amount, fromCurrency, toCurrency);
   animateValue(document.getElementById("result-value"), lastResult, result);
   lastResult = result;
+  const resEl = document.getElementById("result-value");
+  resEl.className = "result-value " + resultSizeClass(result);
 
   document.getElementById("result-unit").textContent      = toCurrency.code;
   document.getElementById("result-full-name").textContent = toCurrency.name;
@@ -272,9 +287,9 @@ function updateConversion() {
 
 // ── Dropdowns ────────────────────────────────────────────────────────────────
 function buildDropdown(listEl, searchId, onSelect) {
-  const groups = { real:[], games:[], tv:[], anime:[], books:[], misc:[] };
+  const groups = { fiat:[], crypto:[], games:[], tv:[], anime:[], books:[], misc:[] };
   const labels = {
-    real:"💰 Real Currencies", games:"🎮 Video Games",
+    fiat:"💰 Fiat Currencies", crypto:"₿ Crypto", games:"🎮 Video Games",
     tv:"📺 TV & Film", anime:"⛩ Anime",
     books:"📚 Books & Literature", misc:"🎲 Misc / Chaos"
   };
