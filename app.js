@@ -2,11 +2,13 @@
 
 // ── State ────────────────────────────────────────────────────────────────────
 let liveRates = {};
+let cryptoPrices = {}; // code → USD price (e.g. BTC → 67000)
 let fromCurrency = CURRENCIES.find(c => c.code === "USD");
 let toCurrency   = CURRENCIES.find(c => c.code === "GAL");
 let amount = 1;
 let currentFilter = "all";
 let ratesLoaded = false;
+let lastUpdated = null;
 
 // ── Animated Background ───────────────────────────────────────────────────────
 const canvas = document.getElementById("bg-canvas");
@@ -93,8 +95,48 @@ const LOADING_MSGS = [
   "Counting Tom Nook's interest…",
   "Minting memes into currency…",
   "Asking Geralt his daily rate…",
+  "Syncing with CoinGecko…",
+  "Calculating Dogecoin's dignity…",
 ];
 
+// ── Crypto fetch (CoinGecko) ──────────────────────────────────────────────────
+const COINGECKO_URL = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false";
+
+async function fetchCryptoPrices() {
+  try {
+    const res = await fetch(COINGECKO_URL);
+    if (!res.ok) throw new Error("CoinGecko HTTP " + res.status);
+    const data = await res.json();
+    // Build a geckoId → price map
+    const geckoMap = {};
+    data.forEach(coin => { geckoMap[coin.id] = coin.current_price; });
+
+    // Inject into our crypto currencies
+    CURRENCIES.forEach(c => {
+      if (c.isCrypto && c.geckoId && geckoMap[c.geckoId] != null) {
+        cryptoPrices[c.code] = geckoMap[c.geckoId];
+      }
+    });
+    return true;
+  } catch (e) {
+    console.warn("CoinGecko fetch failed:", e);
+    // Fallback static prices
+    const fallback = {
+      BTC:96000, ETH:3500, USDT:1, XRP:2.4, BNB:650, SOL:185, USDC:1,
+      DOGE:0.18, ADA:0.52, TRX:0.23, AVAX:35, SHIB:0.000022, TON:5.5,
+      DOT:8, LINK:15, BCH:480, XLM:0.13, UNI:8, LTC:95, NEAR:6,
+      ICP:12, APT:9, ETC:28, STX:1.9, CRO:0.12, FIL:6, HBAR:0.11,
+      VET:0.045, MNT:0.95, ALGO:0.17, OP:1.8, ARB:1.1, ATOM:8,
+      GRT:0.17, INJ:25, MKR:1800, THETA:1.4, FLOW:0.75, FTM:0.65,
+      EGLD:45, XMR:165, IMX:1.6, SAND:0.42, MANA:0.38, AAVE:165,
+      AXS:7.5, RUNE:3.8, KCS:12, CFX:0.18
+    };
+    Object.assign(cryptoPrices, fallback);
+    return false;
+  }
+}
+
+// ── Live rates fetch ──────────────────────────────────────────────────────────
 async function fetchLiveRates() {
   const msgEl = document.querySelector(".loader-text");
   let msgIdx = 0;
@@ -104,22 +146,29 @@ async function fetchLiveRates() {
   }, 700);
 
   try {
-    const res = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
-    const data = await res.json();
+    // Fetch fiat and crypto in parallel
+    const [fiatRes] = await Promise.all([
+      fetch("https://api.exchangerate-api.com/v4/latest/USD"),
+      fetchCryptoPrices()
+    ]);
+    const data = await fiatRes.json();
     liveRates = data.rates;
-    // Inject live rates for real currencies
+    // Inject live fiat rates
     CURRENCIES.forEach(c => {
-      if (c.realCurrency && c.code !== "USD" && liveRates[c.code]) {
+      if (c.realCurrency && !c.isCrypto && c.code !== "USD" && liveRates[c.code]) {
         c.usdRate = 1 / liveRates[c.code];
       }
     });
     ratesLoaded = true;
+    lastUpdated = new Date();
   } catch (e) {
-    // Fallback rates if API fails
-    const fallback = { EUR:0.92, GBP:0.79, JPY:149.5, CHF:0.89, CNY:7.23, CAD:1.36, AUD:1.53, INR:83.1, KRW:1320, BRL:4.97, MXN:17.2, SEK:10.42, NOK:10.68, SGD:1.34, NZD:1.63, ZAR:18.5, RUB:90.2, TRY:32.4, BTC:0.0000158, ETH:0.000265, DOGE:7.3 };
+    // Fallback fiat rates if API fails
+    const fallback = { EUR:0.92, GBP:0.79, JPY:149.5, CHF:0.89, CNY:7.23, CAD:1.36, AUD:1.53, INR:83.1, KRW:1320, BRL:4.97, MXN:17.2, SEK:10.42, NOK:10.68, SGD:1.34, NZD:1.63, ZAR:18.5, RUB:90.2, TRY:32.4 };
     CURRENCIES.forEach(c => {
-      if (c.realCurrency && fallback[c.code]) c.usdRate = fallback[c.code] > 10 ? 1/fallback[c.code] : fallback[c.code];
+      if (c.realCurrency && !c.isCrypto && fallback[c.code]) c.usdRate = 1 / fallback[c.code];
     });
+    await fetchCryptoPrices();
+    lastUpdated = new Date();
   }
 
   clearInterval(msgInterval);
@@ -134,9 +183,60 @@ async function fetchLiveRates() {
   }, 500);
 }
 
+// ── Manual refresh ────────────────────────────────────────────────────────────
+async function refreshRates() {
+  const btn = document.getElementById("refresh-btn");
+  const tsEl = document.getElementById("refresh-ts");
+  if (!btn) return;
+
+  btn.classList.add("refreshing");
+  btn.disabled = true;
+
+  try {
+    const [fiatRes, cryptoOk] = await Promise.all([
+      fetch("https://api.exchangerate-api.com/v4/latest/USD"),
+      fetchCryptoPrices()
+    ]);
+    const data = await fiatRes.json();
+    liveRates = data.rates;
+    CURRENCIES.forEach(c => {
+      if (c.realCurrency && !c.isCrypto && c.code !== "USD" && liveRates[c.code]) {
+        c.usdRate = 1 / liveRates[c.code];
+      }
+    });
+    ratesLoaded = true;
+    lastUpdated = new Date();
+  } catch (e) {
+    console.warn("Refresh failed:", e);
+  }
+
+  btn.classList.remove("refreshing");
+  btn.disabled = false;
+  updateTimestamp(tsEl);
+  updateConversion();
+  buildCards(currentFilter);
+  buildQuickPicks();
+}
+
+function updateTimestamp(el) {
+  if (!el || !lastUpdated) return;
+  const now = new Date();
+  const diffSec = Math.floor((now - lastUpdated) / 1000);
+  if (diffSec < 60) {
+    el.textContent = "just now";
+  } else {
+    const m = Math.floor(diffSec / 60);
+    el.textContent = `${m}m ago`;
+  }
+}
+
 // ── Conversion Logic ──────────────────────────────────────────────────────────
 function getUSDRate(currency) {
   if (currency.code === "USD") return 1;
+  // Crypto: cryptoPrices stores USD price directly (e.g. BTC=96000 USD per 1 BTC)
+  if (currency.isCrypto && cryptoPrices[currency.code] != null) {
+    return cryptoPrices[currency.code]; // USD per 1 coin
+  }
   if (currency.realCurrency && liveRates[currency.code]) {
     return 1 / liveRates[currency.code];
   }
@@ -147,8 +247,8 @@ function convert(amount, from, to) {
   const fromUSD = getUSDRate(from);
   const toUSD   = getUSDRate(to);
   // amount in from → USD → to
-  const inUSD   = amount / fromUSD;
-  return inUSD * toUSD;
+  const inUSD   = amount * fromUSD;
+  return inUSD / toUSD;
 }
 
 function formatNumber(n) {
@@ -189,14 +289,15 @@ function updateConversion() {
   document.getElementById("result-full-name").textContent = toCurrency.name;
   document.getElementById("flavor-text").textContent = toCurrency.flavorText;
 
-  const fromUSDRate = getUSDRate(fromCurrency);
-  const toUSDRate   = getUSDRate(toCurrency);
   const oneFromInTo = convert(1, fromCurrency, toCurrency);
   document.getElementById("rate-text").textContent =
     `1 ${fromCurrency.code} = ${formatNumber(oneFromInTo)} ${toCurrency.code}`;
 
   const sourceEl = document.getElementById("rate-source-text");
-  if (toCurrency.realCurrency && ratesLoaded) {
+  if (toCurrency.isCrypto && cryptoPrices[toCurrency.code] != null) {
+    sourceEl.textContent = "Live · CoinGecko";
+    sourceEl.style.color = "var(--color-success)";
+  } else if (toCurrency.realCurrency && ratesLoaded) {
     sourceEl.textContent = "Live rate";
     sourceEl.style.color = "var(--color-success)";
   } else if (!toCurrency.realCurrency) {
@@ -298,23 +399,26 @@ function buildCards(filter = "all") {
   const list = filter === "all" ? CURRENCIES : CURRENCIES.filter(c => c.category === filter);
 
   list.forEach((currency, i) => {
-    const rateFromUSD = getUSDRate(currency);
     const card = document.createElement("div");
     card.className = "currency-card fade-in";
     card.style.animationDelay = `${Math.min(i * 25, 400)}ms`;
 
     const isReal = currency.realCurrency;
-    const usdEquiv = isReal ? (1 / rateFromUSD) : currency.usdRate;
-    const displayRate = isReal
-      ? `1 ${currency.code} = ${formatNumber(1 / rateFromUSD)} USD`
-      : `1 USD ≈ ${formatNumber(1 / (currency.usdRate || 1))} ${currency.code}`;
+    let displayRate;
+    if (currency.isCrypto && cryptoPrices[currency.code] != null) {
+      displayRate = `1 ${currency.code} = ${formatNumber(cryptoPrices[currency.code])} USD`;
+    } else if (isReal) {
+      displayRate = `1 ${currency.code} = ${formatNumber(getUSDRate(currency))} USD`;
+    } else {
+      displayRate = `1 USD ≈ ${formatNumber(1 / (currency.usdRate || 1))} ${currency.code}`;
+    }
 
     card.innerHTML = `
       <div class="card-header">
         <span class="card-flag">${currency.flag}</span>
         <div class="card-codes">
           <span class="card-code">${currency.code}</span>
-          <span class="card-badge ${isReal ? "badge-real" : "badge-fake"}">${isReal ? "Real" : "Fictional"}</span>
+          <span class="card-badge ${isReal ? "badge-real" : "badge-fake"}">${isReal ? (currency.isCrypto ? "Crypto" : "Real") : "Fictional"}</span>
         </div>
         <span class="card-symbol">${currency.symbol}</span>
       </div>
@@ -366,6 +470,8 @@ const ROTATING_WORDS = [
   "Chaos",
   "V-Bucks",
   "Eddies",
+  "Bitcoin",
+  "Vibes",
 ];
 let wordIdx = 0;
 let typeTimeout = null;
@@ -375,7 +481,6 @@ function typewriterRun() {
   const cursor  = wrapper.querySelector(".cursor");
 
   function getText() {
-    // Return text content without the cursor span
     return wrapper.childNodes[0] ? wrapper.childNodes[0].textContent : "";
   }
   function setText(t) {
@@ -399,7 +504,6 @@ function typewriterRun() {
   function loop() {
     wordIdx = (wordIdx + 1) % ROTATING_WORDS.length;
     const next = ROTATING_WORDS[wordIdx];
-    // Pause, then erase, then type next, then pause again
     typeTimeout = setTimeout(() => {
       erase(() => {
         typeTimeout = setTimeout(() => {
@@ -411,13 +515,13 @@ function typewriterRun() {
     }, 2200);
   }
 
-  // Kick off after initial word is shown
   typeTimeout = setTimeout(loop, 2200);
 }
 
 // ── Stat counter animation ────────────────────────────────────────────────────
 function animateStats() {
-  const realCount = CURRENCIES.filter(c => c.realCurrency).length;
+  const realCount = CURRENCIES.filter(c => c.realCurrency && !c.isCrypto).length;
+  const cryptoCount = CURRENCIES.filter(c => c.isCrypto).length;
   const fictCount  = CURRENCIES.filter(c => !c.realCurrency).length;
   const canonCount = CURRENCIES.filter(c => !c.realCurrency && c.canonical).length;
   document.getElementById("stat-currencies").textContent = CURRENCIES.length;
@@ -481,6 +585,12 @@ function initApp() {
     updateConversion();
   });
 
+  // Refresh button
+  const refreshBtn = document.getElementById("refresh-btn");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", refreshRates);
+  }
+
   // Theme toggle
   const themeBtn = document.querySelector("[data-theme-toggle]");
   const html = document.documentElement;
@@ -501,6 +611,12 @@ function initApp() {
   initFilterTabs();
   animateStats();
   typewriterRun();
+
+  // Show initial timestamp
+  const tsEl = document.getElementById("refresh-ts");
+  updateTimestamp(tsEl);
+  // Update timestamp display every minute
+  setInterval(() => updateTimestamp(document.getElementById("refresh-ts")), 60000);
 }
 
 function updateThemeIcon(btn, theme) {
