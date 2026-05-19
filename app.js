@@ -352,21 +352,68 @@ function initFilterTabs() {
   });
 }
 
-// ── Rotating word in hero ─────────────────────────────────────────────────────
-const ROTATING_WORDS = ["Everything", "Galleons", "Bottle Caps", "Simoleons", "Latinum", "Rupees", "Gil", "Septims", "Chaos"];
+// ── Typewriter animation in hero ──────────────────────────────────────────────
+const ROTATING_WORDS = [
+  "Everything",
+  "Galleons",
+  "Bottle Caps",
+  "Septims",
+  "Latinum",
+  "Rupees",
+  "Gil",
+  "Simoleons",
+  "Zeni",
+  "Chaos",
+  "V-Bucks",
+  "Eddies",
+];
 let wordIdx = 0;
-function rotateWord() {
-  const el = document.getElementById("rotating-word");
-  el.style.opacity = "0";
-  el.style.transform = "translateY(8px)";
-  setTimeout(() => {
+let typeTimeout = null;
+
+function typewriterRun() {
+  const wrapper = document.getElementById("rotating-word");
+  const cursor  = wrapper.querySelector(".cursor");
+
+  function getText() {
+    // Return text content without the cursor span
+    return wrapper.childNodes[0] ? wrapper.childNodes[0].textContent : "";
+  }
+  function setText(t) {
+    wrapper.childNodes[0].textContent = t;
+  }
+
+  function erase(cb) {
+    const current = getText();
+    if (current.length === 0) { cb(); return; }
+    setText(current.slice(0, -1));
+    typeTimeout = setTimeout(() => erase(cb), 55);
+  }
+
+  function type(target, cb) {
+    const current = getText();
+    if (current === target) { cb(); return; }
+    setText(target.slice(0, current.length + 1));
+    typeTimeout = setTimeout(() => type(target, cb), 90);
+  }
+
+  function loop() {
     wordIdx = (wordIdx + 1) % ROTATING_WORDS.length;
-    el.textContent = ROTATING_WORDS[wordIdx];
-    el.style.opacity = "1";
-    el.style.transform = "translateY(0)";
-  }, 300);
+    const next = ROTATING_WORDS[wordIdx];
+    // Pause, then erase, then type next, then pause again
+    typeTimeout = setTimeout(() => {
+      erase(() => {
+        typeTimeout = setTimeout(() => {
+          type(next, () => {
+            typeTimeout = setTimeout(loop, 2200);
+          });
+        }, 180);
+      });
+    }, 2200);
+  }
+
+  // Kick off after initial word is shown
+  typeTimeout = setTimeout(loop, 2200);
 }
-setInterval(rotateWord, 2500);
 
 // ── Stat counter animation ────────────────────────────────────────────────────
 function animateStats() {
@@ -453,6 +500,7 @@ function initApp() {
   buildCards();
   initFilterTabs();
   animateStats();
+  typewriterRun();
 }
 
 function updateThemeIcon(btn, theme) {
